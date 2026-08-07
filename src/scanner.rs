@@ -1,6 +1,5 @@
 use colored::*;
 use tempfile::NamedTempFile;
-use regex::Regex;
 use std::io::Write;
 use anyhow::Result;
 use crate::aur::AurClient;
