@@ -1,9 +1,8 @@
-use colored::*;
 use tempfile::NamedTempFile;
 use std::io::Write;
 use anyhow::Result;
 use crate::aur::AurClient;
-use crate::llm::LocalLLM;
+use crate::llm::LLMClient;
 use std::path::PathBuf;
 
 pub struct Scanner {
@@ -28,15 +27,15 @@ impl Scanner {
             .expect("Failed to write PKGBUILD");
         
         if let Some(path) = temp_file.path().to_str() {
-            println!("{} {}", "PKGBUILD saved to".bright_blue(), path);
+            println!("PKGBUILD saved to {}", path);
         }
 
         let mut warnings = Vec::new();
 
         if self.use_llm {
-            match LocalLLM::new(self.model_path.clone()) {
+            match LLMClient::new(self.model_path.clone()) {
                 Ok(mut llm) => {
-                    println!("{}", "🧠 Running local LLM analysis with Gemma...".bright_cyan());
+                    println!("Running local LLM analysis with Gemma...");
                     
                     match llm.start_server() {
                         Ok(()) => {
@@ -47,22 +46,22 @@ impl Scanner {
                                     }
                                 }
                                 Err(e) => {
-                                    eprintln!("{} {}", "".yellow(), format!("LLM analysis failed: {}", e).yellow());
-                                    eprintln!("   Falling back to heuristic analysis...");
+                                    eprintln!("LLM analysis failed: {}", e);
+                                    eprintln!("Falling back to heuristic analysis...");
                                     warnings.extend(self.heuristic_analysis(&content));
                                 }
                             }
                         }
                         Err(e) => {
-                            eprintln!("{} {}", "".yellow(), format!("Failed to start LLM server: {}", e).yellow());
-                            eprintln!("   Falling back to heuristic analysis...");
+                            eprintln!("Failed to start LLM server: {}", e);
+                            eprintln!("Falling back to heuristic analysis...");
                             warnings.extend(self.heuristic_analysis(&content));
                         }
                     }
                 }
                 Err(e) => {
-                    eprintln!("{} {}", "".yellow(), format!("LLM not available: {}", e).yellow());
-                    eprintln!("   Using heuristic analysis instead...");
+                    eprintln!("LLM not available: {}", e);
+                    eprintln!("Using heuristic analysis instead...");
                     warnings.extend(self.heuristic_analysis(&content));
                 }
             }
@@ -124,14 +123,14 @@ impl Scanner {
     }
 
     pub fn print_warnings(&self, warnings: &[String]) {
-        println!("{}", " Potential issues detected:".yellow().bold());
+        println!("Potential issues detected:");
         for warning in warnings {
-            println!("   {}", warning.red());
+            println!("  {}", warning);
         }
     }
 
     pub fn confirm_continue(&self) -> bool {
-        print!("{} ", "Continue anyway? (y/N):".bright_yellow());
+        print!("Continue anyway? (y/N): ");
         let _ = std::io::stdout().flush();
         
         let mut response = String::new();

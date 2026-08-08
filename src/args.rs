@@ -19,6 +19,9 @@ pub struct Args {
     #[arg(long = "model")]
     pub model_path: Option<String>,
 
+     #[arg(long = "check")]
+    pub check: bool,
+
     #[arg(short = 'q', long = "quiet")]
     pub quiet: bool,
 
@@ -28,14 +31,26 @@ pub struct Args {
 
 impl Args {
     pub fn has_check_flag(&self) -> bool {
-        self.extra_args.iter().any(|arg| arg == "--check")
-    }
+    self.check || self.extra_args.iter().any(|arg| arg == "--check")
+}
 
     pub fn get_filtered_args(&self) -> Vec<String> {
-        self.extra_args
-            .iter()
-            .filter(|arg| *arg != "--check")
-            .cloned()
-            .collect()
-    }
+     let mut filtered = Vec::new();
+     let mut skip_next = false;
+     for arg in &self.extra_args {
+         if skip_next {
+             skip_next = false;
+             continue;
+         }
+         if arg == "--check" {
+             continue;
+         } 
+         if arg == "--model" {
+             skip_next = true;
+             continue;
+         }
+         filtered.push(arg.clone());
+     }
+     filtered
+}
 }

@@ -1,9 +1,9 @@
-```rust
 use anyhow::{Result, Context, anyhow};
 use serde_json::json;
 use std::env;
 use std::path::PathBuf;
 use std::process::Command;
+use std::time::Duration;
 
 pub struct LLMClient {
     server_url: String,
@@ -15,11 +15,11 @@ impl LLMClient {
     pub fn new(model_path: Option<PathBuf>) -> Result<Self> {
         let model_path = model_path.unwrap_or_else(|| {
             let home = env::var("HOME").unwrap_or_default();
-            PathBuf::from(format!("{}/llm/*.gguf", home))
+            PathBuf::from(format!("{}/models/gemma-2b-it-Q4_K_M.gguf", home))
         });
         
         if !model_path.exists() {
-            return Err(anyhow!("Model path not found")); //todo add curl to install the llm
+            return Err(anyhow!("Model path not found: {}", model_path.display()));
         }
 
         Ok(Self {
@@ -30,15 +30,18 @@ impl LLMClient {
     }
 
     pub fn start_server(&mut self) -> Result<()> {
-        if let Ok(_) = reqwest::blocking::get(&format!("{}/health", self.server_url)) {
-            println!("llama-server already running");
-            return Ok(());
+        // Check if server is already running and model is loaded
+        if let Ok(response) = reqwest::blocking::get(&format!("{}/health", self.server_url)) {
+            if response.status().is_success() {
+                println!("llama-server already running");
+                return Ok(());
+            }
         }
 
         println!("Starting llama-server...");
 
         let server_path = which::which("llama-server")
-            .context("llama.cpp not found")?;   //add llama cpp installation option from yay or git
+            .context("llama.cpp not found")?;
 
         let child = Command::new(server_path)
             .arg("-m")
@@ -57,15 +60,50 @@ impl LLMClient {
         self.server_process = Some(child);
         
         println!("Waiting for server to be ready...");
-        for _ in 0..30 {
-            std::thread::sleep(std::time::Duration::from_secs(1));
-            if let Ok(_) = reqwest::blocking::get(&format!("{}/health", self.server_url)) {
-                println!("Server started!");
-                return Ok(());
+        // Wait longer and check for actual model loading
+        for i in 0..60 {
+            std::thread::sleep(Duration::from_secs(1));
+            
+            // Try to get health status
+            if let Ok(response) = reqwest::blocking::get(&format!("{}/health", self.server_url)) {
+                if response.status().is_success() {
+                    // Try a simple completion to verify model is loaded
+                    if let Ok(_) = self.test_completion() {
+                        println!("Server ready!");
+                        return Ok(());
+                    }
+                }
+            }
+            
+            if i % 10 == 0 && i > 0 {
+                println!("Still waiting... ({} seconds)", i);
             }
         }
         
-        Err(anyhow!("Server failed to start"))
+        Err(anyhow!("Server failed to start within timeout"))
+    }
+
+    fn test_completion(&self) -> Result<()> {
+        let client = reqwest::blocking::Client::new();
+        let request_body = json!({
+            "prompt": "Hello",
+            "n_predict": 1,
+            "temperature": 0.1,
+        });
+
+        let response = client
+            .post(format!("{}/completion", self.server_url))
+            .header("Content-Type", "application/json")
+            .json(&request_body)
+            .timeout(Duration::from_secs(10))
+            .send()
+            .context("Failed to test completion")?;
+
+        if response.status().is_success() {
+            Ok(())
+        } else {
+            Err(anyhow!("Model not ready"))
+        }
     }
 
     pub fn analyze_pkgbuild(&self, content: &str, package_name: &str) -> Result<Vec<String>> {
@@ -77,7 +115,7 @@ impl LLMClient {
              {}\n\
              ```\n\n\
              Return a JSON array of security concerns. If none found, return an empty array [].\n\
-             Format each concern as a string starting with a brief category like 'Remote Code Execution' or 'Privilege Escalation' followed by details.",
+             Format each concern as a string. Do NOT include your thinking process, only the response.",
             package_name, content
         );
 
@@ -101,8 +139,9 @@ impl LLMClient {
             .post(format!("{}/completion", self.server_url))
             .header("Content-Type", "application/json")
             .json(&request_body)
+            .timeout(Duration::from_secs(60))
             .send()
-            .context("Failed to send request to llama.cpp server")?; //add retry option 
+            .context("Failed to send request to llama.cpp server")?;
 
         if !response.status().is_success() {
             let error_text = response.text().unwrap_or_default();
@@ -122,7 +161,17 @@ impl LLMClient {
     }
 
     fn parse_response(&self, response: &str) -> Result<Vec<String>> {
-        if let Ok(json_array) = serde_json::from_str::<Vec<String>>(response) {
+        // Strip out thinking process
+        let response = if let Some(idx) = response.find("[End thinking]") {
+            &response[idx + "[End thinking]".len()..]
+        } else if let Some(idx) = response.find("response:") {
+            &response[idx + "response:".len()..]
+        } else {
+            response
+        };
+
+        // Try to parse as JSON array first
+        if let Ok(json_array) = serde_json::from_str::<Vec<String>>(response.trim()) {
             return Ok(json_array);
         }
 
@@ -148,7 +197,7 @@ impl LLMClient {
             if response.to_lowercase().contains("safe") || response.to_lowercase().contains("no issues") {
                 return Ok(Vec::new());
             }
-            warnings.push(response.to_string());
+            warnings.push(response.trim().to_string());
         }
 
         Ok(warnings)
@@ -168,4 +217,3 @@ impl Drop for LLMClient {
         self.stop_server();
     }
 }
-```

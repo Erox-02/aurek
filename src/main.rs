@@ -5,7 +5,6 @@ mod yay;
 mod llm;
 
 use clap::Parser;
-use colored::*;
 use anyhow::Result;
 use args::Args;
 use scanner::Scanner;
@@ -22,14 +21,14 @@ fn main() -> Result<()> {
         std::process::exit(1);
     }
 
-        YayWrapper::warn_about_paru();
+    YayWrapper::warn_about_paru();
 
-        if args.has_check_flag() && args.install.is_some() {}
+    if args.has_check_flag() && args.install.is_some() {
         let package_name = args.install.as_ref().unwrap();
         
         if !args.no_scan {
             if !args.quiet {
-                println!("{} {}", "Scanning".bright_blue(), package_name.bright_white());
+                println!("{} {}", "Scanning", package_name);
             }
 
             let model_path = args.model_path.clone().map(PathBuf::from);
@@ -42,26 +41,26 @@ fn main() -> Result<()> {
                     }
                     
                     if !scanner.confirm_continue() {
-                        println!("{}", "Installation cancelled.".bright_red());
+                        println!("{}", "Installation cancelled.");
                         std::process::exit(1);
                     }
                 }
                 Ok(None) => {
                     if !args.quiet {
-                        println!("{}", " No malware detected — Safe to proceed.".bright_green());
+                        println!("{}", "No malware detected - Safe to proceed.");
                     }
                 }
                 Err(e) => {
-                    eprintln!("{} {}", format!("Scan failed: {}", e).yellow());
+                    eprintln!("{}", format!("Scan failed: {}", e));
                     if !scanner.confirm_continue() {
-                        println!("{}", " Installation cancelled.".bright_red());
+                        println!("{}", "Installation cancelled.");
                         std::process::exit(1);
                     }
                 }
             }
         } else {
             if !args.quiet {
-                println!("{}", "Skipping malware scan (--no-scan flag used)".bright_yellow());
+                println!("{}", "Skipping malware scan (--no-scan flag used)");
             }
         }
 
@@ -74,6 +73,6 @@ fn main() -> Result<()> {
 }
 
 fn print_banner() {
-    println!("{}", "   Checking packages before installation...".dimmed());
+    println!("{}", "Checking packages before installation...");
     println!();
 }
