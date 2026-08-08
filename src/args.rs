@@ -2,15 +2,22 @@ use clap::Parser;
 
 #[derive(Parser, Debug)]
 #[command(name = "aurek")]
-#[command(author = "Erox-02")]
-#[command(version = "0.1.0")]
+#[command(author = "Dipanjan Dutta")]
+#[command(version = "0.2.0")]
 #[command(about = "AUR security checker with LLM analysis")]
 pub struct Args {
+
     #[arg(short = 'S', long = "install")]
     pub install: Option<String>,
 
     #[arg(long = "no-scan")]
     pub no_scan: bool,
+
+    #[arg(long = "no-llm")]
+    pub no_llm: bool,
+
+    #[arg(long = "model")]
+    pub model_path: Option<String>,
 
     #[arg(short = 'q', long = "quiet")]
     pub quiet: bool,
