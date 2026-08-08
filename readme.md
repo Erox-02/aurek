@@ -1,160 +1,109 @@
-# AUREK - AUR Security Checker
+AUREK - AUR Security Checker
 
-[![Crates.io](https://img.shields.io/crates/v/aurek.svg)](https://crates.io/crates/aurek)
-[![Rust](https://img.shields.io/badge/Rust-1.70+-orange.svg)](https://www.rust-lang.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Hack Club Stardance](https://img.shields.io/badge/Hack%20Club-Stardance-blueviolet)](https://stardance.hackclub.com/)
-[![Status](https://img.shields.io/badge/status-active-brightgreen.svg)](https://github.com/Erox-02/aurek)
+https://img.shields.io/crates/v/aurek.svg
+https://img.shields.io/badge/Rust-1.70+-orange.svg
+https://img.shields.io/badge/License-MIT-yellow.svg
+https://img.shields.io/badge/Hack%20Club-Stardance-blueviolet
+https://img.shields.io/badge/version-v2.0.0-blue
+AUREK is a security wrapper for yay that checks AUR packages before installation.
 
-AUREK is a security wrapper around `yay` that checks AUR packages before installing them.
+AUR packages are community-maintained and not vetted like official repository packages. A PKGBUILD can execute arbitrary commands during installation. AUREK adds a verification step before that happens.
 
-The AUR is awesome, but packages there are maintained by the community and aren't vetted the same way packages in the official Arch repositories are. A `PKGBUILD` can run commands on your machine while building a package, so blindly installing random AUR packages isn't always a great idea.
+v2.0.0 - Local LLM analysis with Gemma and llama.cpp is now supported.
 
-AUREK adds another checkpoint.
+---
 
-Before installation, it can fetch the package's `PKGBUILD`, scan it for suspicious patterns, show you anything weird it finds, and then let you decide whether you still want to continue.
+Quick Start
 
-Basically:
+bash
+# Standard security check
+aurek -S archey3 --check
 
-```text
-yay install package
-package maybe evil
-computer sad
+# With LLM analysis
+aurek -S archey3 --check --model ~/models/gemma-4-E2B-it-Q4_K_M.gguf
 
-aurek check package
-aurek see suspicious thing
-human decide
-computer hopefully less sad
-```
 
-It's written in Rust because this is a security tool and I wanted something fast, reliable, and memory-safe.
+---
 
-AUREK is still being developed, so don't treat it as a replacement for actually reading a `PKGBUILD`.
+Features
 
-## Features
+· PKGBUILD security scanning
+· Optional local LLM analysis with Gemma
+· yay wrapper for package management commands
+· paru detection and warnings
+· Colored terminal output
+· Git fallback when AUR API is unavailable
+· Written in Rust
 
-* Security scanning for suspicious `PKGBUILD` patterns
-* Wrapper around `yay`
-* Passes normal `yay` commands through
-* Detects `paru` and warns about unsupported usage
-* Colored and readable terminal output
-* Git fallback if the normal AUR fetching method fails
-* Fast and lightweight Rust binary
-* Designed so more package managers can be supported later
+---
+![Screenshot](assets/screenshot.jpg)
+---
 
-## Why AUREK?
+Installation
 
-The Arch User Repository has a huge amount of useful software.
+From Source
 
-The problem is that AUR packages are community maintained.
-
-When you install an AUR package, you're trusting its build instructions. A malicious or compromised `PKGBUILD` could potentially execute commands you really don't want running on your machine.
-
-Most people probably aren't going to manually inspect every line of every `PKGBUILD`.
-
-Me included.
-
-So I started building AUREK.
-
-It doesn't magically make the AUR safe, and it definitely can't guarantee that a package isn't malicious. It just adds another layer between:
-
-```text
-"cool package"
-```
-
-and
-
-```text
-"run random internet code on my computer"
-```
-
-## Installation
-
-### From crates.io
-
-Once published:
-
-```bash
-cargo install aurek
-```
-
-### From source
-
-```bash
+bash
 git clone https://github.com/Erox-02/aurek.git
 cd aurek
 cargo install --path .
-```
 
-### Build manually
 
-```bash
+Manual Build
+
+bash
 git clone https://github.com/Erox-02/aurek.git
 cd aurek
-
 cargo build --release
-```
+sudo cp target/release/aurek /usr/local/bin/
 
-The compiled binary will be at:
 
-```text
-target/release/aurek
-```
+---
 
-You can then move it somewhere in your `PATH`.
+Usage
 
-For example:
+Check a Package Before Installation
 
-```bash
-sudo cp target/release/aurek /usr/local/bin/aurek
-```
-
-## Usage
-
-### Install a package with a security check
-
-```bash
+bash
 aurek -S <package> --check
-```
 
-Example:
 
-```bash
-aurek -S archey3 --check
-```
+Fetches the PKGBUILD, scans for suspicious patterns, displays results, and passes to yay if confirmed.
 
-### Normal yay passthrough
+With LLM Analysis
 
-Without `--check`, AUREK behaves mostly like a wrapper around `yay`.
+bash
+aurek -S <package> --check --model /path/to/model.gguf
 
-```bash
-aurek -S <package>
-```
 
-Other `yay` commands can also be passed through:
+Skip Scan
 
-```bash
+bash
+aurek -S <package> --check --no-scan
+
+
+Quiet Mode
+
+bash
+aurek -S <package> --check --quiet
+
+
+Normal yay Commands
+
+bash
 aurek -Syu
 aurek -R <package>
 aurek -Q
 aurek -Ss <search>
-```
 
-### Skip scanning
 
-```bash
-aurek -S <package> --check --no-scan
-```
+---
 
-### Quiet mode
+Example Output
 
-```bash
-aurek -S <package> --check --quiet
-```
+Safe Package
 
-## Example
-
-```text
+text
 $ aurek -S archey3 --check
 
 AUREK - AUR Security Checker
@@ -164,14 +113,12 @@ Scanning archey3
 PKGBUILD saved to /tmp/.tmpF6Xz4F
 
 No suspicious patterns detected.
+Executing: yay -S archey3
 
-Executing:
-yay -S archey3
-```
 
-If something suspicious is found:
+Suspicious Package
 
-```text
+text
 $ aurek -S suspicious-package --check
 
 AUREK - AUR Security Checker
@@ -181,310 +128,206 @@ Scanning suspicious-package
 PKGBUILD saved to /tmp/.tmpG7Yz5G
 
 Potential issues detected:
-
-- Uses sudo, may escalate privileges
-- External URL detected: https://example.com/script.sh
+  - Remote Code Execution: Downloads script from external URL
+  - Privilege Escalation: Uses sudo without verification
 
 Continue anyway? (y/N): n
 
 Installation cancelled.
-```
 
-A warning doesn't automatically mean a package is malware.
 
-There are completely legitimate reasons for some packages to use commands that look suspicious. AUREK's job is to point them out so you can actually look at them before continuing.
+---
 
-AUREK see weird command. AUREK tell human. Human use brain.
+LLM Analysis
 
-## How It Works
+Starting with v2.0.0, AUREK can optionally use a local Gemma model through llama.cpp.
 
-When you run something like:
+Why Local
 
-```bash
-aurek -S package-name --check
-```
+· Privacy - PKGBUILD stays on local machine
+· Offline capability
+· Context-aware analysis beyond pattern matching
 
-AUREK roughly does this:
+Setup
 
-1. Detects the package being installed.
-2. Fetches its `PKGBUILD` from the AUR.
-3. Falls back to Git if the normal fetching method fails.
-4. Runs heuristic security checks against the `PKGBUILD`.
-5. Reports suspicious patterns.
-6. Asks for confirmation when necessary.
-7. Passes the installation command to `yay`.
+Install llama.cpp:
 
-So AUREK isn't replacing `yay`.
+bash
+yay -S llama.cpp
+# or
+sudo pacman -S llama.cpp
 
-It sits in front of it.
 
-```text
-You
- |
- v
-AUREK
- |
- +---- fetch PKGBUILD
- |
- +---- scan PKGBUILD
- |
- +---- suspicious?
- |        |
- |        +---- yes ---> warn human
- |        |
- |        +---- no
- |
- v
-yay
- |
- v
-package installation
-```
+Download a Gemma GGUF model:
 
-## Security Checks
+bash
+mkdir -p ~/models
+cd ~/models
+wget https://huggingface.co/unsloth/gemma-4-E2B-it-GGUF/resolve/main/gemma-4-E2B-it-Q4_K_M.gguf
 
-AUREK currently looks for patterns related to things such as:
 
-* Remote script execution
-* `curl` or `wget` piped into a shell
-* `sudo` usage
-* Suspicious privilege escalation
-* Overly permissive permissions such as `chmod 777`
-* Dangerous deletion commands
-* Python `-c` execution
-* Base64 decoding and possible obfuscation
-* Shell `eval`
-* Systemd service modifications
-* Cron job installation
-* External URLs
-* Unexpected network calls
+Run with LLM:
 
-These checks are heuristic.
+bash
+aurek -S package --check --model ~/models/gemma-4-E2B-it-Q4_K_M.gguf
 
-That means AUREK can produce false positives and it can also miss malicious code.
 
-Do not use:
+Example with LLM
 
-```text
-AUREK says safe = definitely safe
-```
+text
+Scanning archey3
+PKGBUILD saved to /tmp/.tmpXYZ
 
-Use:
+Running local LLM analysis with Gemma...
+Starting llama-server...
+Waiting for server to be ready...
+Server started!
 
-```text
-AUREK found nothing obvious = still use brain
-```
+No malware detected - Safe to proceed.
 
-Security hard.
+llama.cpp server stopped
+Executing: yay -S archey3
 
-Computer do exactly what code say.
 
-Sometimes code say bad thing.
+Heuristics vs LLM
 
-## LLM Integration
+ Heuristics Local LLM
+Speed Fast Slower
+Analysis Pattern-based Context-aware
+Privacy Local Local
+Setup Simple Requires model
 
-One of the main things I want to add is optional local LLM analysis.
+---
 
-The idea is to run a small language model locally, such as Gemma through `llama.cpp`, and give it the `PKGBUILD` alongside the normal heuristic results.
+Security Checks
 
-Instead of only matching patterns like:
+Heuristic Detection
 
-```bash
-curl something | sh
-```
+· Remote script execution (curl | sh, wget | sh)
+· sudo usage
+· Overly permissive permissions (chmod 777)
+· Dangerous deletion commands
+· Python -c execution
+· Base64 decoding
+· eval usage
+· Systemd service modification
+· Cron job installation
+· External URLs and network calls
 
-an LLM could potentially look at the context around commands and identify suspicious behavior that simple pattern matching might miss.
+LLM Analysis
 
-The important part is **local**.
+Context-aware analysis that can identify suspicious patterns not covered by simple heuristics.
 
-I don't want AUREK uploading random `PKGBUILD` files or analysis data to some external AI API just to check a package.
+---
 
-The planned flow looks something like:
+Architecture
 
-```text
-PKGBUILD
-   |
-   +------> Heuristic Scanner
-   |
-   +------> Local LLM
-                 |
-                 v
-          Security Analysis
-                 |
-                 v
+text
+             User
+               |
+               v
              AUREK
-```
+               |
+        Is --check enabled?
+          +----+----+
+         No         Yes
+         |           |
+         |      Fetch PKGBUILD
+         |       API / Git
+         |           |
+         |           v
+         |    Heuristic Scan
+         |           |
+         |           v
+         |    Optional LLM Scan
+         |           |
+         |           v
+         |     Show Findings
+         |           |
+         +-----+-----+
+               |
+               v
+              yay
+               |
+               v
+        Package Installation
 
-This is still experimental and not finished yet.
 
-LLM smart sometimes.
+---
 
-LLM also confidently dumb sometimes.
+Roadmap
 
-So it will be another signal, not the final authority.
+Done - v2.0.0
 
-## Roadmap
+· Basic security scanning
+· yay wrapper
+· Git fallback
+· paru detection
+· Local LLM integration
+· Colored terminal output
 
-### LLM Integration
+Planned
 
-Add optional local language model analysis using models such as Gemma through `llama.cpp`.
+· Additional LLM models
+· More package managers
+· Advanced heuristics
+· Recursive dependency scanning
+· Package reputation system
+· Plugin system
 
-### More Package Managers
+---
 
-AUREK currently focuses on `yay`, but I want the scanning system to be less dependent on one AUR helper.
+Limitations
 
-Possible future support includes other AUR helpers and eventually other package ecosystems.
+AUREK is a security layer, not a guarantee.
 
-### Advanced Heuristics
+· Static analysis has limits
+· Obfuscated code may be missed
+· Dependencies can introduce threats
+· Runtime behavior is not detected
+· False positives and negatives are possible
 
-Improve the scanner beyond basic pattern matching.
+Manual review of suspicious packages is still recommended.
 
-This could include:
+---
 
-* Better shell command analysis
-* Obfuscation detection
-* Suspicious download detection
-* Build-step analysis
-* File modification analysis
-* Better severity scoring
+Development
 
-### Recursive Dependency Checking
-
-Scan relevant dependencies instead of checking only the package directly requested by the user.
-
-### Package Reputation
-
-Possibly create a community-driven reputation system for packages and detected threats.
-
-This needs careful design because "random internet people vote package evil" is not exactly a perfect security system.
-
-### Plugin System
-
-Allow custom scanners and security rules.
-
-### Web Interface
-
-Eventually, I'd like to build a web interface for viewing package analysis reports and possibly a community threat database.
-
-For now though:
-
-terminal good.
-
-terminal fast.
-
-web later.
-
-## Project Status
-
-AUREK is currently under active development.
-
-Some things will change.
-
-Some things will break.
-
-Some code will probably make me wonder why I wrote it like that three weeks later.
-
-That's normal.
-
-The current focus is getting the basic scanning and `yay` integration reliable before adding more complicated detection systems.
-
-## Limitations
-
-AUREK is an extra security layer, not an antivirus and not a guarantee that an AUR package is safe.
-
-Static analysis has limits.
-
-For example, malicious behavior could be:
-
-* Hidden in downloaded source code
-* Introduced after the initial scan
-* Obfuscated in a way the scanner doesn't understand
-* Executed through dependencies
-* Triggered at runtime rather than build time
-
-Always use common sense when installing software from untrusted sources.
-
-If something looks extremely weird, read the `PKGBUILD`.
-
-## Development
-
-Clone the repository:
-
-```bash
-git clone https://github.com/Erox-02/aurek.git
+bash
+git clone https://github.com/Erox-02/aurek
 cd aurek
-```
 
-Build:
-
-```bash
 cargo build
-```
-
-Run tests:
-
-```bash
 cargo test
-```
-
-Build an optimized release:
-
-```bash
 cargo build --release
-```
-
-Install locally:
-
-```bash
 cargo install --path .
-```
 
-## Contributing
+
+---
+
+Contributing
 
 Contributions are welcome.
 
-If you want to help, you can:
+Areas of contribution:
 
-* Report bugs
-* Suggest security checks
-* Improve existing heuristics
-* Work on LLM integration
-* Add tests
-* Improve documentation
-* Help support additional package managers
+· Security checks
+· Heuristics
+· Tests
+· LLM integration
+· Documentation
 
-Open an issue if you have an idea before making a huge change so we don't accidentally build two completely different versions of the same thing.
+Open an issue for larger changes before implementation.
 
-Small PR good.
+---
 
-Working code good.
+License
 
-Tests very good.
+MIT License. See LICENSE for details.
 
-## Security
+---
 
-If you discover a security problem in AUREK itself, please avoid publicly posting exploit details before there's a chance to fix the issue.
+Links
 
-Security tool having security vulnerability = very not good.
-
-## License
-
-AUREK is licensed under the MIT License.
-
-See the `LICENSE` file for details.
-
-## Acknowledgments
-
-Thanks to:
-
-* Hack Club Stardance for inspiring the project
-* The `yay` developers and contributors
-* The Arch Linux and AUR communities
-* The Rust community and ecosystem
-
-## Links
-
-GitHub:
-
-[https://github.com/Erox-02/aurek](https://github.com/Erox-02/aurek)
-
+· GitHub: https://github.com/Erox-02/aurek
+· Author: https://github.com/Erox-02
