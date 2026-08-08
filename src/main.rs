@@ -24,12 +24,12 @@ fn main() -> Result<()> {
 
         YayWrapper::warn_about_paru();
 
-        if args.has_check_flag() && args.install.is_some() {
+        if args.has_check_flag() && args.install.is_some() {}
         let package_name = args.install.as_ref().unwrap();
         
         if !args.no_scan {
             if !args.quiet {
-                println!("{} {}", "🔍 Scanning".bright_blue(), package_name.bright_white());
+                println!("{} {}", "Scanning".bright_blue(), package_name.bright_white());
             }
 
             let model_path = args.model_path.clone().map(PathBuf::from);
@@ -42,7 +42,7 @@ fn main() -> Result<()> {
                     }
                     
                     if !scanner.confirm_continue() {
-                        println!("{}", "❌ Installation cancelled.".bright_red());
+                        println!("{}", "Installation cancelled.".bright_red());
                         std::process::exit(1);
                     }
                 }
@@ -54,14 +54,14 @@ fn main() -> Result<()> {
                 Err(e) => {
                     eprintln!("{} {}", format!("Scan failed: {}", e).yellow());
                     if !scanner.confirm_continue() {
-                        println!("{}", "❌ Installation cancelled.".bright_red());
+                        println!("{}", " Installation cancelled.".bright_red());
                         std::process::exit(1);
                     }
                 }
             }
         } else {
             if !args.quiet {
-                println!("{}", "⏭️  Skipping malware scan (--no-scan flag used)".bright_yellow());
+                println!("{}", "Skipping malware scan (--no-scan flag used)".bright_yellow());
             }
         }
 

@@ -1,47 +1,44 @@
+```rust
 use anyhow::{Result, Context, anyhow};
 use serde_json::json;
 use std::env;
-use std::path::Pathbuf;
+use std::path::PathBuf;
 use std::process::Command;
-use curl::easy::Easy;
 
 pub struct LLMClient {
     server_url: String,
-    model_path: Pathbuf
+    model_path: PathBuf,
     server_process: Option<std::process::Child>,
 }
 
 impl LLMClient {
-    pub fn new(model_path: Option<Pathbuf>) -> Results<Self> {
-        let model_path = model_path.unwarp_or_else( | {
-            let home = env::var("HOME").unwarp_or_default();
-            Pathbuf::from(format!("{}/llm/*.gguf", home))
+    pub fn new(model_path: Option<PathBuf>) -> Result<Self> {
+        let model_path = model_path.unwrap_or_else(|| {
+            let home = env::var("HOME").unwrap_or_default();
+            PathBuf::from(format!("{}/llm/*.gguf", home))
         });
         
         if !model_path.exists() {
-            return Err(anyhow!("Model path not found")  //todo add curl to install the llm 
-            );
+            return Err(anyhow!("Model path not found")); //todo add curl to install the llm
         }
 
-        ok(self {
-            server_url: "http://127.0.0.1:8000".to_string(),
+        Ok(Self {
+            server_url: "http://127.0.0.1:8080".to_string(),
             model_path,
             server_process: None,
         })
-    } 
+    }
 
     pub fn start_server(&mut self) -> Result<()> {
-
         if let Ok(_) = reqwest::blocking::get(&format!("{}/health", self.server_url)) {
-            println!("{}", "llama-server already runnin :} ".bright_green());
+            println!("llama-server already running");
             return Ok(());
         }
 
-        println!("{}", "Startin llama-cli .............".bright_green());
+        println!("Starting llama-server...");
 
         let server_path = which::which("llama-server")
-            .context("llama.cpp not found ")?; //add llama.cpp install option from yay or pacman 
-
+            .context("llama.cpp not found")?;   //add llama cpp installation option from yay or git
 
         let child = Command::new(server_path)
             .arg("-m")
@@ -52,42 +49,46 @@ impl LLMClient {
             .arg("8080")
             .arg("-t")
             .arg("4")
-            //.arg("ngl")
-            //.arg("2")
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::null())
             .spawn()
-            .context("unable to start llama.cpp :c")
+            .context("unable to start llama.cpp")?;
 
         self.server_process = Some(child);
         
-        println!("{}", "Waiting for server to be ready........".bright_yellow());
+        println!("Waiting for server to be ready...");
         for _ in 0..30 {
-            std::thread::sleep(std::time::Duration::from_secs(1)):
+            std::thread::sleep(std::time::Duration::from_secs(1));
             if let Ok(_) = reqwest::blocking::get(&format!("{}/health", self.server_url)) {
-                println!("{}", "Server started :) "bright_green());
+                println!("Server started!");
                 return Ok(());
-            } 
+            }
         }
         
-        Err(anyhow!("Server failed to start")) //todo add option for retry
+        Err(anyhow!("Server failed to start"))
     }
-    pub fn analyze_pkgbuild(&self, content: &str, package_name: &str) -> Result<Vec<String>> 
-{       
+
+    pub fn analyze_pkgbuild(&self, content: &str, package_name: &str) -> Result<Vec<String>> {
         let prompt = format!(
-            r#"Analyze this PKGBUILD file for malware or suspicious code.Be specific and list only security concerns found."Return a JSON array of security concerns. If none found, return an empty array [].Format each concern as a string starting with a brief category like "Remote Code Execution" or "Privilege Escalation" followed by details."#,
+            "Analyze this PKGBUILD file for malware or suspicious code.\n\
+             Package: {}\n\
+             PKGBUILD:\n\
+             ```\n\
+             {}\n\
+             ```\n\n\
+             Return a JSON array of security concerns. If none found, return an empty array [].\n\
+             Format each concern as a string starting with a brief category like 'Remote Code Execution' or 'Privilege Escalation' followed by details.",
             package_name, content
         );
 
-           let response = self.call_llm(&prompt)?;
-            self.parse_reponse(&response)
-        
-        }
+        let response = self.call_llm(&prompt)?;
+        self.parse_response(&response)
+    }
 
-        fn call_llm(&self, prompt: &str) -> Result<String> { 
-            let client  = reqwest::blocking::Client::new();
+    fn call_llm(&self, prompt: &str) -> Result<String> {
+        let client = reqwest::blocking::Client::new();
 
-            let request_body = json!({
+        let request_body = json!({
             "prompt": prompt,
             "temperature": 0.1,
             "top_k": 10,
@@ -101,7 +102,7 @@ impl LLMClient {
             .header("Content-Type", "application/json")
             .json(&request_body)
             .send()
-            .context("Failed to send request to llama.cpp server")?;
+            .context("Failed to send request to llama.cpp server")?; //add retry option 
 
         if !response.status().is_success() {
             let error_text = response.text().unwrap_or_default();
@@ -118,7 +119,6 @@ impl LLMClient {
             .to_string();
 
         Ok(content)
-       
     }
 
     fn parse_response(&self, response: &str) -> Result<Vec<String>> {
@@ -158,13 +158,14 @@ impl LLMClient {
         if let Some(mut child) = self.server_process.take() {
             let _ = child.kill();
             let _ = child.wait();
-            println!("{}", "🛑 llama.cpp server stopped".bright_yellow());
+            println!("llama.cpp server stopped");
         }
     }
 }
 
-impl Drop for LocalLLM {
+impl Drop for LLMClient {
     fn drop(&mut self) {
         self.stop_server();
     }
 }
+```
