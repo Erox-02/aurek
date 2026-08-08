@@ -5,7 +5,6 @@ use anyhow::Result;
 use crate::aur::AurClient;
 
 pub struct Scanner;
-
 impl Scanner {
     pub fn new() -> Self {
         Self
@@ -65,10 +64,6 @@ impl Scanner {
             warnings.push("Systemd service injection".to_string());
         }
         
-        if content.contains("crontab") {
-            warnings.push("Cron job installation".to_string());
-        }
-
         if warnings.is_empty() {
             None
         } else {
