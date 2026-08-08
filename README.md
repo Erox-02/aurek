@@ -37,7 +37,7 @@ Features
 · Written in Rust
 
 ---
-![Screenshot](assets/screenshot.jpg)
+![Screenshot](assets/yay.png)
 ---
 
 Installation
