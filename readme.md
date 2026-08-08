@@ -1,10 +1,11 @@
 AUREK - AUR Security Checker
 
-https://img.shields.io/crates/v/aurek.svg
-https://img.shields.io/badge/Rust-1.70+-orange.svg
-https://img.shields.io/badge/License-MIT-yellow.svg
-https://img.shields.io/badge/Hack%20Club-Stardance-blueviolet
-https://img.shields.io/badge/version-v2.0.0-blue
+[![Crates.io](https://img.shields.io/crates/v/aurek.svg)](https://crates.io/crates/aurek)
+[![Rust](https://img.shields.io/badge/Rust-1.70+-orange.svg)](https://www.rust-lang.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Hack Club Stardance](https://img.shields.io/badge/Hack%20Club-Stardance-blueviolet)](https://stardance.hackclub.com/)
+[![Status](https://img.shields.io/badge/status-active-brightgreen.svg)](https://github.com/Erox-02/aurek)
+
 AUREK is a security wrapper for yay that checks AUR packages before installation.
 
 AUR packages are community-maintained and not vetted like official repository packages. A PKGBUILD can execute arbitrary commands during installation. AUREK adds a verification step before that happens.
