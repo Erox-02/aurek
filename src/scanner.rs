@@ -70,7 +70,7 @@ impl Scanner {
                 }
                 Err(e) => {
                     eprintln!("LLM not available: {}", e);
-                    eprintln!("Using heuristic analysis instead...");
+                    eprintln!("Using heuristic analysis instead..."); // btw if you cant pronounce heu* , i wasnt able to do on my first try XD, also * is my wild card 
                     warnings.extend(self.heuristic_analysis(&content));
                 }
             }
@@ -146,7 +146,7 @@ impl Scanner {
             println!();
         }
 
-        println!("  AUREK recommends reviewing this package before installation.");
+        println!("  aurek recommends reviewing this package before installation."); //ik my outputs sucks but atleast not written by llm :] <3
         println!();
     }
 

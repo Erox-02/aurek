@@ -38,8 +38,7 @@ impl LLMClient {
         }
 
         println!("Starting llama-server...");
-
-        let server_path = which::which("llama-server")
+        let server_path = which::which("llama-server") //ik llama-server is slower than llama-cli still too lazy to add tht up 
             .context("llama.cpp not found")?;
 
         let child = Command::new(server_path)
@@ -158,7 +157,7 @@ impl LLMClient {
 
     pub fn format_for_cli(&self, warnings: &[String], _package_name: &str) -> String {
         if warnings.is_empty() {
-            return format!("[V]: no Security corcerns detected :)");
+            return format!("[V]: no Security corcerns detected :)"); //I am wondering shld i add the tick symbol instead of V?
         }
         let mut output = Vec::new();
         output.push(format!("\n[!]: Security corncerns detected :c"));

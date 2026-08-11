@@ -24,8 +24,8 @@ impl YayWrapper {
     }
 
     pub fn show_install_instructions() {
-        eprintln!("{}", "❌ Error: yay is not installed. Please install yay first.".bright_red()); //add auto yay installation
-        eprintln!("   Visit: https://github.com/Jguer/yay");
+        eprintln!("{}", "❌ Error: yay is not installed. Please install yay first.".bright_red()); //TODO: add auto yay installation
+        eprintln!("   Visit: https://github.com/Jguer/yay");  
     }
 
     pub fn install_package(package: &str, args: &Args) -> Result<()> {

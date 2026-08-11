@@ -114,7 +114,7 @@ fn print_banner(config: &Config) {
         println!("{}", "AUREK - AUR Security Checker".bright_cyan().bold());
         println!("{}", "Checking packages before installation...".dimmed());
     } else {
-        println!("AUREK - AUR Security Checker");
+        println!("AUREK - AUR Security Checker"); // if someone ever reviews my code , please fix these strings and send a pr <3
         println!("Checking packages before installation...");
     }
     println!();
