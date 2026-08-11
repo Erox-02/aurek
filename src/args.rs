@@ -3,7 +3,7 @@ use clap::Parser;
 #[derive(Parser, Debug)]
 #[command(name = "aurek")]
 #[command(author = "Dipanjan Dutta")]
-#[command(version = "0.2.0")]
+#[command(version = "2.1.2")]
 #[command(about = "AUR security checker with LLM analysis")]
 pub struct Args {
 
