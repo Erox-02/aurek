@@ -25,8 +25,6 @@ impl Config {
     pub fn load() -> Result<Self> {
         let config_paths = vec![
             PathBuf::from("/etc/aurek.conf"),
-            PathBuf::from("/home/erox/.config/aurek/aurek.conf"),
-            PathBuf::from("./aurek.conf"),
         ];
 
         for path in config_paths {
