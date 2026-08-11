@@ -30,7 +30,6 @@ impl LLMClient {
     }
 
     pub fn start_server(&mut self) -> Result<()> {
-        // Check if server is already running and model is loaded
         if let Ok(response) = reqwest::blocking::get(&format!("{}/health", self.server_url)) {
             if response.status().is_success() {
                 println!("llama-server already running");
@@ -60,14 +59,11 @@ impl LLMClient {
         self.server_process = Some(child);
         
         println!("Waiting for server to be ready...");
-        // Wait longer and check for actual model loading
         for i in 0..60 {
             std::thread::sleep(Duration::from_secs(1));
             
-            // Try to get health status
             if let Ok(response) = reqwest::blocking::get(&format!("{}/health", self.server_url)) {
                 if response.status().is_success() {
-                    // Try a simple completion to verify model is loaded
                     if let Ok(_) = self.test_completion() {
                         println!("Server ready!");
                         return Ok(());
@@ -108,20 +104,20 @@ impl LLMClient {
 
     pub fn analyze_pkgbuild(&self, content: &str, package_name: &str) -> Result<Vec<String>> {
         let prompt = format!(
-            "Analyze this PKGBUILD file for malware or suspicious code.\n\
+           "Analyze this PKGBUILD file for malware or suspicious code.\n\
              Package: {}\n\
-             PKGBUILD:\n\
-             ```\n\
-             {}\n\
-             ```\n\n\
-             Return a JSON array of security concerns. If none found, return an empty array [].\n\
-             Format each concern as a string. Do NOT include your thinking process, only the response.",
-            package_name, content
-        );
+            PKGBUILD:\n\
+           ```\n\
+           {}\n\
+           ```\n\n\
+           Return a JSON array of security concerns. If none found, return an empty array [].\n\
+           Format each concern as a string. Do NOT include your thinking process, only the response.",
+           package_name, content
+     );
 
-        let response = self.call_llm(&prompt)?;
-        self.parse_response(&response)
-    }
+    let response = self.call_llm(&prompt)?;
+    self.parse_response_v2(&response).map(|v| v.into_iter().map(|(cat, desc)| format!("{}: {}", cat, desc)).collect())
+}
 
     fn call_llm(&self, prompt: &str) -> Result<String> {
         let client = reqwest::blocking::Client::new();
@@ -160,8 +156,29 @@ impl LLMClient {
         Ok(content)
     }
 
-    fn parse_response(&self, response: &str) -> Result<Vec<String>> {
-        // Strip out thinking process
+    pub fn format_for_cli(&self, warnings: &[String], _package_name: &str) -> String {
+        if warnings.is_empty() {
+            return format!("[V]: no Security corcerns detected :)");
+        }
+        let mut output = Vec::new();
+        output.push(format!("\n[!]: Security corncerns detected :c"));
+        output.push("".to_string());
+        for (i, warning) in warnings.iter().enumerate() {
+            let (category, description) = if let Some((cat, desc)) = warning.split_once(':') {
+                (cat.trim(), desc.trim())
+            } else {
+                ("General", warning.as_str())
+            };
+            output.push(format!("  [#{}] {}:", i + 1, category));
+            output.push(format!("      {}", description));
+            output.push("".to_string());
+        }
+        output.push(" [!] aurek asks to review the package".to_string());
+        output.push("".to_string());
+        output.join("\n")
+    }
+
+    fn parse_response_v2(&self, response: &str) -> Result<Vec<(String, String)>> {
         let response = if let Some(idx) = response.find("[End thinking]") {
             &response[idx + "[End thinking]".len()..]
         } else if let Some(idx) = response.find("response:") {
@@ -169,37 +186,44 @@ impl LLMClient {
         } else {
             response
         };
-
-        // Try to parse as JSON array first
+        let mut warnings = Vec::new();
         if let Ok(json_array) = serde_json::from_str::<Vec<String>>(response.trim()) {
-            return Ok(json_array);
+            for item in json_array {
+                if let Some((cat, desc)) = item.split_once(':') {
+                    warnings.push((cat.trim().to_string(), desc.trim().to_string()));
+                } else {
+                    warnings.push(("General".to_string(), item));
+                }
+            }
+            return Ok(warnings);
         }
 
-        let mut warnings = Vec::new();
         for line in response.lines() {
             let line = line.trim();
-            if line.starts_with('-') || line.starts_with('•') || line.starts_with('*') {
-                let warning = line.trim_start_matches(|c| c == '-' || c == '•' || c == '*')
+            if line.starts_with('-') || line.starts_with('*') {
+                let clean = line.trim_start_matches(|c| c == '-' || c == '*')
                     .trim()
                     .to_string();
-                if !warning.is_empty() {
-                    warnings.push(warning);
+                if !clean.is_empty() {
+                    if let Some((cat, desc)) = clean.split_once(':') {
+                        warnings.push((cat.trim().to_string(), desc.trim().to_string()));
+                    } else {
+                        warnings.push(("General".to_string(), clean));
+                    }
                 }
-            } else if line.contains(":") && !line.contains("```") && line.len() > 20 {
+            } else if line.contains(':') && !line.contains("```") && line.len() > 10 {
                 let parts: Vec<&str> = line.splitn(2, ':').collect();
                 if parts.len() == 2 {
-                    warnings.push(format!("{}: {}", parts[0].trim(), parts[1].trim()));
+                    warnings.push((parts[0].trim().to_string(), parts[1].trim().to_string()));
                 }
             }
         }
-
-        if warnings.is_empty() && !response.is_empty() && !response.contains("[]") {
+        if warnings.is_empty() {
             if response.to_lowercase().contains("safe") || response.to_lowercase().contains("no issues") {
                 return Ok(Vec::new());
             }
-            warnings.push(response.trim().to_string());
+            warnings.push(("General".to_string(), response.trim().to_string()));
         }
-
         Ok(warnings)
     }
 
@@ -210,79 +234,6 @@ impl LLMClient {
             println!("llama.cpp server stopped");
         }
     }
-    pub fn format_for_cli(&self, warning: &[String], package_name: &str) -> String {
-        if warning.is_empty() {
-            return format!("[V]: no Security corcerns detected :)");
-        }
-        let mut output = Vec::new();
-        output.push(format!("\n[!]: Security corncerns detected :c"));
-        output.push("".to_string());
-        for (i, warning) in warning.iter().enumerate() {
-            let (category, description) = if let Some((cat, desc)) = warning.split_once(':'){
-                (cat.trim(), desc.trim())
-            }
-                else {("General", warning.as_str())
-            };
-            output.push(format!("  [#{}] {}:", i + 1, category));
-            output.push(format!("      {}", description));
-            output.push("".to_string());
-        }
-        output.push(" [!] aurek asks to review the package".to_string());
-        output.push("".to_string());
-        output.join("\n")
-        }
-    } 
-    
-    fn parse_response(&self, response: &str) -> Result<Vec<(String, String)>> {
-        let response = if let Some(idx) = response.find("[End thinking]") {
-            &response[idx + "[End thinking]".len()..]
-        }
-        else if let Some(idx) = response.find("response:") {
-            &response[idx + "response:".len()..]
-        else {
-                response
-            };
-        let mut warnings = Vec::new();
-        if let Ok(json_array) = serde_json::from_str::<Vec<String>>(response.trim()) {
-            for item in json_array {
-                if let Some((cat, desc)) = item.split_once(':') {
-                    warnings.push((cat.trim().to_string(), desc.trim().to_string()));
-                } else {
-                    warnings.push(("General".to_string(), item));
-                }
-            }
-        }
-        return OK(warnings);
-        }
-
-
-        for line in response.lines() {
-            let line = line.trim();
-            if line.starts_with('-') || line.starts_with('*') {
-                let clean = line.trim_start_matches(|c| c == '-' ||  c == '*')
-                    .trim()
-                    .to_string();
-                    if !clean.is_empty() {
-                        if let Some((cat, desc)) = clean.split_once(':') {
-                            warnings.push((cat.trim().to_string(), desc.trim().to_string()));
-                        } else {
-                            warnings.push(("General".to_string(), clean));
-                        }
-                    }
-            } else if line.contains(':') && !line.contains("```") && line.len() > 10 {
-                let parts: Vec<&str> = line.splitn(2, ':').collect();
-                if parts.len() == 2 {
-                    warnings.push((parts[0].trim().to_string(), parts[1].trim().to_string()));
-                }              
-            }
-        }
-        if warnings.is_empty() {
-        if response.to_lowercase().contains("safe") || response.to_lowercase().contains("no issues") {
-            return Ok(Vec::new());{
-            }
-            warnings.push(("General",to_string(), response.trim().to_string()));
-    }
-    Ok(warnings)
 }
 
 impl Drop for LLMClient {

@@ -6,6 +6,7 @@ mod llm;
 mod config;
 
 use clap::Parser;
+use colored::Colorize;
 use anyhow::Result;
 use args::Args;
 use scanner::Scanner;

@@ -23,45 +23,54 @@ impl Scanner {
 
     pub fn scan_package(&self, package: &str) -> Result<Option<Vec<(String, String)>>> {
         let content = AurClient::fetch_pkgbuild(package)?;
-        let mut warnings = Vec::new();
+        
+        let mut temp_file = NamedTempFile::new()
+            .expect("Failed to create temporary file");
+        temp_file.write_all(content.as_bytes())
+            .expect("Failed to write PKGBUILD");
+        
+        if let Some(path) = temp_file.path().to_str() {
+            println!("PKGBUILD saved to {}", path);
+        }
+
+        let mut warnings: Vec<(String, String)> = Vec::new();
 
         if self.use_llm {
             match LLMClient::new(self.model_path.clone()) {
                 Ok(mut llm) => {
-                    if self.config.llm_response_on_cli {
-                        println!("[!] Running LLM analysis with Gemma...");
-                    } else {
-                        println!("Running LLM analysis with Gemma...");
-                    }
-
+                    println!("Running local LLM analysis with Gemma...");
+                    
                     match llm.start_server() {
                         Ok(()) => {
                             match llm.analyze_pkgbuild(&content, package) {
                                 Ok(llm_warnings) => {
                                     if !llm_warnings.is_empty() {
-                                        warnings.extend(llm_warnings);
-                                        if self.config.llm_response_on_cli {
-                                            println!("\n{}", llm.format_for_cli(&warnings, package));
+                                        for w in llm_warnings {
+                                            if let Some((cat, desc)) = w.split_once(':') {
+                                                warnings.push((cat.trim().to_string(), desc.trim().to_string()));
+                                            } else {
+                                                warnings.push(("General".to_string(), w));
+                                            }
                                         }
                                     }
                                 }
                                 Err(e) => {
-                                    eprintln!("[!] LLM analysis failed: {}", e);
-                                    eprintln!("    Falling back to heuristic analysis...");
+                                    eprintln!("LLM analysis failed: {}", e);
+                                    eprintln!("Falling back to heuristic analysis...");
                                     warnings.extend(self.heuristic_analysis(&content));
                                 }
                             }
                         }
                         Err(e) => {
-                            eprintln!("[!] Failed to start LLM server: {}", e);
-                            eprintln!("    Falling back to heuristic analysis...");
+                            eprintln!("Failed to start LLM server: {}", e);
+                            eprintln!("Falling back to heuristic analysis...");
                             warnings.extend(self.heuristic_analysis(&content));
                         }
                     }
                 }
                 Err(e) => {
-                    eprintln!("[!] LLM not available: {}", e);
-                    eprintln!("    Using heuristic analysis instead...");
+                    eprintln!("LLM not available: {}", e);
+                    eprintln!("Using heuristic analysis instead...");
                     warnings.extend(self.heuristic_analysis(&content));
                 }
             }
@@ -76,7 +85,7 @@ impl Scanner {
         }
     }
 
-    pub fn heuristic_analysis(&self, content: &str) -> Vec<(String, String)> {
+    fn heuristic_analysis(&self, content: &str) -> Vec<(String, String)> {
         let mut warnings = Vec::new();
 
         if content.contains("curl") && content.contains("| sh") {
@@ -124,11 +133,11 @@ impl Scanner {
 
     pub fn print_warnings(&self, warnings: &[(String, String)]) {
         if warnings.is_empty() {
-            println!("[✓] No issues detected");
+            println!("No issues detected");
             return;
         }
 
-        println!("\n[!] Potential issues detected:");
+        println!("\nPotential issues detected:");
         println!();
 
         for (i, (category, description)) in warnings.iter().enumerate() {
@@ -137,16 +146,12 @@ impl Scanner {
             println!();
         }
 
-        println!("  [!] AUREK recommends reviewing this package before installation.");
+        println!("  AUREK recommends reviewing this package before installation.");
         println!();
     }
 
     pub fn confirm_continue(&self) -> bool {
-        if self.config.color {
-            print!("Continue anyway? (y/N): ");
-        } else {
-            print!("Continue anyway? (y/N): ");
-        }
+        print!("Continue anyway? (y/N): ");
         let _ = std::io::stdout().flush();
 
         let mut response = String::new();
