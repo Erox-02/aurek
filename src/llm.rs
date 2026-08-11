@@ -210,15 +210,15 @@ impl LLMClient {
             println!("llama.cpp server stopped");
         }
     }
-    pub fn format_for_cli(&self, warning: &[String], package_name: &str) String {
+    pub fn format_for_cli(&self, warning: &[String], package_name: &str) -> String {
         if warning.is_empty() {
-            return format!("[V]: no Security corcerns detected :)")
+            return format!("[V]: no Security corcerns detected :)");
         }
         let mut output = Vec::new();
-        output.push(format!("\n[!]: Securi corncerns detected :c"));
+        output.push(format!("\n[!]: Security corncerns detected :c"));
         output.push("".to_string());
-        for (i, warning) in warning.iter().enumrate() {
-            let (category, description) = if let Some((car, desc)) = warning.split_once(':'){
+        for (i, warning) in warning.iter().enumerate() {
+            let (category, description) = if let Some((cat, desc)) = warning.split_once(':'){
                 (cat.trim(), desc.trim())
             }
                 else {("General", warning.as_str())
@@ -227,18 +227,19 @@ impl LLMClient {
             output.push(format!("      {}", description));
             output.push("".to_string());
         }
-        output.push(" [!] aurek asks to review the package".to_string()):
+        output.push(" [!] aurek asks to review the package".to_string());
         output.push("".to_string());
         output.join("\n")
+        }
     } 
     
     fn parse_response(&self, response: &str) -> Result<Vec<(String, String)>> {
-        let response = if let some(idx) = response.find("[End thinking]") {
+        let response = if let Some(idx) = response.find("[End thinking]") {
             &response[idx + "[End thinking]".len()..]
         }
         else if let Some(idx) = response.find("response:") {
             &response[idx + "response:".len()..]
-            else {
+        else {
                 response
             };
         let mut warnings = Vec::new();
@@ -251,7 +252,7 @@ impl LLMClient {
                 }
             }
         }
-        return oK(warnings);
+        return OK(warnings);
         }
 
 
@@ -278,7 +279,6 @@ impl LLMClient {
         if warnings.is_empty() {
         if response.to_lowercase().contains("safe") || response.to_lowercase().contains("no issues") {
             return Ok(Vec::new());{
-                return Ok(Vec::new());
             }
             warnings.push(("General",to_string(), response.trim().to_string()));
     }
