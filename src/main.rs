@@ -26,8 +26,11 @@ fn main() -> Result<()> {
     }
 
     YayWrapper::warn_about_paru();
+    if args.remove.is_some() {
+        YayWrapper::execute_with_args(&args)?;
+        return Ok(());
+    }
 
-    // Check if we should scan
     let should_scan = if args.no_scan {
         false
     } else if args.install.is_some() {

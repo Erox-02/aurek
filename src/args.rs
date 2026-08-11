@@ -3,12 +3,14 @@ use clap::Parser;
 #[derive(Parser, Debug)]
 #[command(name = "aurek")]
 #[command(author = "Dipanjan Dutta")]
-#[command(version = "2.1.2")]
+#[command(version = "2.1.4")]
 #[command(about = "AUR security checker with LLM analysis")]
 pub struct Args {
-
     #[arg(short = 'S', long = "install")]
     pub install: Option<String>,
+
+    #[arg(short = 'R', long = "remove")]
+    pub remove: Option<String>,
 
     #[arg(long = "no-scan")]
     pub no_scan: bool,
@@ -19,7 +21,7 @@ pub struct Args {
     #[arg(long = "model")]
     pub model_path: Option<String>,
 
-     #[arg(long = "check")]
+    #[arg(long = "check")]
     pub check: bool,
 
     #[arg(short = 'q', long = "quiet")]
@@ -31,26 +33,26 @@ pub struct Args {
 
 impl Args {
     pub fn has_check_flag(&self) -> bool {
-    self.check || self.extra_args.iter().any(|arg| arg == "--check")
-}
+        self.check || self.extra_args.iter().any(|arg| arg == "--check")
+    }
 
     pub fn get_filtered_args(&self) -> Vec<String> {
-     let mut filtered = Vec::new();
-     let mut skip_next = false;
-     for arg in &self.extra_args {
-         if skip_next {
-             skip_next = false;
-             continue;
-         }
-         if arg == "--check" {
-             continue;
-         } 
-         if arg == "--model" {
-             skip_next = true;
-             continue;
-         }
-         filtered.push(arg.clone());
-     }
-     filtered
-}
+        let mut filtered = Vec::new();
+        let mut skip_next = false;
+        for arg in &self.extra_args {
+            if skip_next {
+                skip_next = false;
+                continue;
+            }
+            if arg == "--check" {
+                continue;
+            }
+            if arg == "--model" {
+                skip_next = true;
+                continue;
+            }
+            filtered.push(arg.clone());
+        }
+        filtered
+    }
 }

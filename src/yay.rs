@@ -55,6 +55,10 @@ impl YayWrapper {
         if let Some(pkg) = &args.install {
             cmd.arg("-S").arg(pkg);
         }
+
+        if let Some(pkg) = &args.remove {
+            cmd.arg("-R").arg(pkg);
+        }
         
         cmd.args(&args.extra_args);
         

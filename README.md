@@ -12,9 +12,9 @@ aur packages are community-maintained and aren't vetted in the same way as packa
 
 aurek adds a security layer before that happens, using heuristic scanning and, optionally, a local LLM to look at the package with more context.
 
-## v2.1.2
+## v2.1.4
 
-v2.1.2 makes aurek easier to use in day-to-day package management.
+v2.1.4 makes aurek easier to use in day-to-day package management.
 
 * **Scan by default** - `aurek -S package` now scans automatically
 * **Config file support** - change aurek's behavior without adding flags every time
