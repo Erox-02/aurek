@@ -1,6 +1,6 @@
 [package]
 name = "aurek"
-version = "2.1.2"
+version = "2.1.3"
 edition = "2021"
 description = "A security wrapper around yay that checks AUR packages for malware before installation"
 authors = ["Dipanjan Dutta <relic.of.sky@gmail.com>"]
