@@ -210,6 +210,79 @@ impl LLMClient {
             println!("llama.cpp server stopped");
         }
     }
+    pub fn format_for_cli(&self, warning: &[String], package_name: &str) String {
+        if warning.is_empty() {
+            return format!("[V]: no Security corcerns detected :)")
+        }
+        let mut output = Vec::new();
+        output.push(format!("\n[!]: Securi corncerns detected :c"));
+        output.push("".to_string());
+        for (i, warning) in warning.iter().enumrate() {
+            let (category, description) = if let Some((car, desc)) = warning.split_once(':'){
+                (cat.trim(), desc.trim())
+            }
+                else {("General", warning.as_str())
+            };
+            output.push(format!("  [#{}] {}:", i + 1, category));
+            output.push(format!("      {}", description));
+            output.push("".to_string());
+        }
+        output.push(" [!] aurek asks to review the package".to_string()):
+        output.push("".to_string());
+        output.join("\n")
+    } 
+    
+    fn parse_response(&self, response: &str) -> Result<Vec<(String, String)>> {
+        let response = if let some(idx) = response.find("[End thinking]") {
+            &response[idx + "[End thinking]".len()..]
+        }
+        else if let Some(idx) = response.find("response:") {
+            &response[idx + "response:".len()..]
+            else {
+                response
+            };
+        let mut warnings = Vec::new();
+        if let Ok(json_array) = serde_json::from_str::<Vec<String>>(response.trim()) {
+            for item in json_array {
+                if let Some((cat, desc)) = item.split_once(':') {
+                    warnings.push((cat.trim().to_string(), desc.trim().to_string()));
+                } else {
+                    warnings.push(("General".to_string(), item));
+                }
+            }
+        }
+        return oK(warnings);
+        }
+
+
+        for line in response.lines() {
+            let line = line.trim();
+            if line.starts_with('-') || line.starts_with('*') {
+                let clean = line.trim_start_matches(|c| c == '-' ||  c == '*')
+                    .trim()
+                    .to_string();
+                    if !clean.is_empty() {
+                        if let Some((cat, desc)) = clean.split_once(':') {
+                            warnings.push((cat.trim().to_string(), desc.trim().to_string()));
+                        } else {
+                            warnings.push(("General".to_string(), clean));
+                        }
+                    }
+            } else if line.contains(':') && !line.contains("```") && line.len() > 10 {
+                let parts: Vec<&str> = line.splitn(2, ':').collect();
+                if parts.len() == 2 {
+                    warnings.push((parts[0].trim().to_string(), parts[1].trim().to_string()));
+                }              
+            }
+        }
+        if warnings.is_empty() {
+        if response.to_lowercase().contains("safe") || response.to_lowercase().contains("no issues") {
+            return Ok(Vec::new());{
+                return Ok(Vec::new());
+            }
+            warnings.push(("General",to_string(), response.trim().to_string()));
+    }
+    Ok(warnings)
 }
 
 impl Drop for LLMClient {

@@ -24,7 +24,7 @@ impl YayWrapper {
     }
 
     pub fn show_install_instructions() {
-        eprintln!("{}", "❌ Error: yay is not installed. Please install yay first.".bright_red());
+        eprintln!("{}", "❌ Error: yay is not installed. Please install yay first.".bright_red()); //add auto yay installation
         eprintln!("   Visit: https://github.com/Jguer/yay");
     }
 
@@ -57,7 +57,7 @@ impl YayWrapper {
         }
         
         cmd.args(&args.extra_args);
-
+        
         let status = cmd.status()
             .context("Failed to execute yay command")?;
 
